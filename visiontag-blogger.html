@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VisionTag AI | Image Caption Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; color: #0f172a; padding: 20px 16px; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+
+  /* HEADER */
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+  .logo { font-size: 20px; font-weight: 800; color: #4f46e5; display: flex; align-items: center; gap: 8px; }
+  .credits-pill { background: #0f172a; color: #818cf8; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; }
+  .credit-dot { width: 7px; height: 7px; background: #818cf8; border-radius: 50%; }
+
+  /* CARD */
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 18px; }
+
+  /* API KEY ROW */
+  .api-row { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
+  .api-row label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap; }
+  .api-row input { flex: 1; padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 12px; font-family: inherit; outline: none; color: #334155; background: #f8fafc; }
+  .api-row input:focus { border-color: #4f46e5; }
+  .api-link { font-size: 11px; color: #4f46e5; text-decoration: none; white-space: nowrap; }
+  .api-link:hover { text-decoration: underline; }
+
+  /* DROP ZONE */
+  .drop-zone { border: 2px dashed #c7d2fe; border-radius: 18px; padding: 40px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; background: #fafbff; margin-bottom: 18px; }
+  .drop-zone:hover { border-color: #4f46e5; background: #eff0fe; }
+  .drop-icon { font-size: 40px; margin-bottom: 12px; }
+  .drop-zone h3 { font-size: 15px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .drop-zone p  { font-size: 12px; color: #94a3b8; }
+  #fileInput { display: none; }
+  #imagePreview { max-width: 100%; max-height: 340px; border-radius: 14px; display: none; margin-top: 16px; border: 1px solid #e2e8f0; }
+
+  /* CONTROLS */
+  .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .field label { display: block; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .field select { width: 100%; padding: 11px 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: inherit; color: #334155; background: #f8fafc; outline: none; appearance: none; -webkit-appearance: none; }
+  .field select:focus { border-color: #4f46e5; }
+
+  /* GENERATE BUTTON */
+  .gen-btn { width: 100%; padding: 15px; background: #4f46e5; color: #fff; border: none; border-radius: 14px; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; transition: background 0.2s, transform 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .gen-btn:hover:not(:disabled) { background: #4338ca; transform: translateY(-2px); }
+  .gen-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
+  /* OUTPUT CARD */
+  .output-card { background: #0f172a; border-radius: 20px; padding: 24px; display: none; }
+  .output-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 12px; }
+  .output-badge { font-size: 10px; font-weight: 800; color: #818cf8; text-transform: uppercase; letter-spacing: 1px; }
+  .copy-btn { background: #1e293b; color: #94a3b8; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  .copy-btn:hover { background: #334155; color: #fff; }
+  .caption-text { font-size: 15px; line-height: 1.7; color: #e2e8f0; }
+  .hashtags { margin-top: 14px; font-size: 13px; font-weight: 600; color: #818cf8; line-height: 1.8; }
+
+  /* LOADING */
+  .spin { display: inline-block; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* NOTICE */
+  .notice { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-bottom: 16px; }
+  .notice.green { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+  .notice.red   { background: #fff1f2; border-color: #fecdd3; color: #9f1239; }
+
+  /* NAV TABS */
+  .nav-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+  .tab { padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1.5px solid #e2e8f0; background: #fff; color: #64748b; transition: all 0.15s; }
+  .tab.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+  @media (max-width: 480px) {
+    .controls-grid { grid-template-columns: 1fr; }
+    .api-row { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">👁️ VisionTag AI</div>
+    <div class="credits-pill"><div class="credit-dot"></div> <span id="creditCount">850</span> / 1000 Credits</div>
+  </div>
+
+  <!-- API KEY CARD -->
+  <div class="card">
+    <div class="api-row">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="Paste your Anthropic API Key here (sk-ant-...)">
+      <a class="api-link" href="https://console.anthropic.com" target="_blank">Get Free Key →</a>
+    </div>
+    <div class="notice" id="apiNotice">⚠️ Demo Mode — Enter your Anthropic API Key above for real AI captions. Without key, sample captions will be shown.</div>
+  </div>
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+    <div class="tab active">✨ Caption Generator</div>
+    <div class="tab">🏷️ Bulk Tagging</div>
+    <div class="tab">🕐 History</div>
+  </div>
+
+  <!-- MAIN CARD -->
+  <div class="card">
+
+    <!-- DROP ZONE -->
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept="image/*" onchange="previewImage(event)">
+      <div class="drop-icon">📸</div>
+      <h3>Upload an Image</h3>
+      <p>Click to browse or drag & drop (PNG, JPG, WEBP)</p>
+      <img id="imagePreview" src="#" alt="Preview">
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls-grid">
+      <div class="field">
+        <label>Caption Style</label>
+        <select id="captionStyle">
+          <option value="descriptive">📝 Detailed Descriptive</option>
+          <option value="social">📱 Social Media (Viral)</option>
+          <option value="alt">♿ Web Accessibility (Alt-Text)</option>
+          <option value="short">⚡ Short &amp; Punchy</option>
+          <option value="seo">🔍 SEO Optimized</option>
+          <option value="hindi">🇮🇳 Hindi Caption</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Language</label>
+        <select id="captionLang">
+          <option value="English">English</option>
+          <option value="Hindi">Hindi</option>
+          <option value="Hinglish">Hinglish</option>
+          <option value="Spanish">Spanish</option>
+          <option value="French">French</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="genBtn" onclick="generateCaption()">
+      ✨ Analyze &amp; Generate Caption (1 Credit)
+    </button>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-card" id="outputCard">
+    <div class="output-top">
+      <div class="output-badge">🤖 AI Response</div>
+      <button class="copy-btn" onclick="copyCaption()">📋 Copy</button>
+    </div>
+    <div class="caption-text" id="captionResult">Analyzing...</div>
+    <div class="hashtags"     id="hashtagResult"></div>
+  </div>
+
+</div>
+
+<script>
+  var credits   = 850;
+  var imageB64  = null;
+  var imageMime = 'image/jpeg';
+
+  // Sample captions for demo mode
+  var sampleCaptions = {
+    descriptive: "A visually striking image with rich detail and vibrant composition. The subject is well-lit with natural lighting, showcasing clear textures and depth. The overall mood is inviting and professionally captured, suitable for editorial or commercial use.",
+    social:      "This view is absolutely 🔥 Can't stop staring! Which one is your favorite part? Drop a comment below 👇✨ #Amazing #Viral #MustSee",
+    alt:         "Image showing the main subject clearly positioned in the foreground with a blurred background, captured in natural daylight conditions.",
+    short:       "Pure perfection. No filter needed.",
+    seo:         "High-quality image featuring detailed subject matter with excellent composition and lighting. Perfect for web use, blog posts, and digital marketing campaigns targeting visual content consumers.",
+    hindi:       "यह तस्वीर बेहद खूबसूरत है! रोशनी और रंगों का संयोजन इसे और भी आकर्षक बनाता है। एक पल जो हमेशा याद रहेगा। 📸✨"
+  };
+
+  function previewImage(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    imageMime = file.type || 'image/jpeg';
+    var reader = new FileReader();
+    reader.onload = function() {
+      var preview = document.getElementById('imagePreview');
+      preview.src = reader.result;
+      preview.style.display = 'block';
+      document.getElementById('dropZone').style.padding = '16px';
+      // Extract base64
+      imageB64 = reader.result.split(',')[1];
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Drag & drop support
+  var dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover',  function(e){ e.preventDefault(); dz.style.borderColor = '#4f46e5'; });
+  dz.addEventListener('dragleave', function()  { dz.style.borderColor = '#c7d2fe'; });
+  dz.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dz.style.borderColor = '#c7d2fe';
+    var file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      document.getElementById('fileInput').files = e.dataTransfer.files;
+      previewImage({ target: { files: e.dataTransfer.files } });
+    }
+  });
+
+  function getStylePrompt(style, lang) {
+    var prompts = {
+      descriptive: 'Write a detailed, professional descriptive caption for this image in ' + lang + '. Describe the subject, lighting, mood, and composition in 2-3 sentences.',
+      social:      'Write a viral social media caption for this image in ' + lang + '. Make it engaging, use emojis, and add a call-to-action. Also suggest 5 relevant hashtags.',
+      alt:         'Write a concise web accessibility alt-text description for this image in ' + lang + '. Focus on what a visually impaired person needs to know. Keep it under 125 characters.',
+      short:       'Write a short, punchy, memorable caption for this image in ' + lang + '. Maximum 10 words. Make it impactful.',
+      seo:         'Write an SEO-optimized image caption and description in ' + lang + '. Include relevant keywords naturally. Write 2-3 sentences suitable for a website or blog.',
+      hindi:       'इस तस्वीर के लिए हिंदी में एक सुंदर और भावनापूर्ण कैप्शन लिखें। 2-3 वाक्य लिखें और 3-4 हैशटैग भी सुझाएं।'
+    };
+    return prompts[style] || prompts.descriptive;
+  }
+
+  function generateCaption() {
+    if (!imageB64) { alert('Please upload an image first!'); return; }
+    if (credits <= 0) { alert('No credits remaining!'); return; }
+
+    var apiKey = document.getElementById('apiKey').value.trim();
+    var style  = document.getElementById('captionStyle').value;
+    var lang   = document.getElementById('captionLang').value;
+    var btn    = document.getElementById('genBtn');
+    var out    = document.getElementById('outputCard');
+    var res    = document.getElementById('captionResult');
+    var tags   = document.getElementById('hashtagResult');
+
+    // Show output card
+    out.style.display = 'block';
+    res.innerHTML = '<span class="spin">⏳</span> Analyzing image...';
+    tags.innerText = '';
+    btn.disabled   = true;
+    btn.innerHTML  = '<span class="spin">⏳</span> Analyzing...';
+
+    if (!apiKey || !apiKey.startsWith('sk-ant-')) {
+      // Demo mode
+      setTimeout(function() {
+        res.innerText  = sampleCaptions[style] || sampleCaptions.descriptive;
+        tags.innerText = style === 'social' ? '#Photography #Viral #Amazing #Trending #MustSee' : '';
+        finishGeneration(false);
+      }, 1800);
+      return;
+    }
+
+    // Real API call
+    var prompt = getStylePrompt(style, lang);
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: imageMime, data: imageB64 } },
+            { type: 'text',  text: prompt }
+          ]
+        }]
+      })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.content && data.content[0]) {
+        var text = data.content[0].text || '';
+        // Separate hashtags if present
+        var hashMatch = text.match(/#[\w\u0900-\u097F]+(\s+#[\w\u0900-\u097F]+)*/g);
+        if (hashMatch) {
+          res.innerText  = text.replace(hashMatch.join(' '), '').trim();
+          tags.innerText = hashMatch.join(' ');
+        } else {
+          res.innerText  = text;
+          tags.innerText = '';
+        }
+        document.getElementById('apiNotice').className = 'notice green';
+        document.getElementById('apiNotice').innerText = '✅ Real AI Caption generated via Claude Vision API!';
+        finishGeneration(true);
+      } else {
+        res.innerText = data.error ? ('API Error: ' + data.error.message) : 'Unexpected response. Try again.';
+        finishGeneration(false);
+      }
+    })
+    .catch(function(err) {
+      res.innerText = '❌ Network error. Check your API key or internet connection.';
+      document.getElementById('apiNotice').className = 'notice red';
+      document.getElementById('apiNotice').innerText = '❌ API call failed. Check your key at console.anthropic.com';
+      finishGeneration(false);
+    });
+  }
+
+  function finishGeneration(success) {
+    var btn = document.getElementById('genBtn');
+    btn.disabled  = false;
+    btn.innerHTML = '✨ Analyze &amp; Generate Caption (1 Credit)';
+    if (success) {
+      credits--;
+      document.getElementById('creditCount').innerText = credits;
+    }
+  }
+
+  function copyCaption() {
+    var text = document.getElementById('captionResult').innerText +
+               '\n' + document.getElementById('hashtagResult').innerText;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text.trim()).then(function() { alert('Caption copied! ✅'); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text.trim();
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('Caption copied! ✅');
+    }
+  }
+</script>
+</body>
+</html>
